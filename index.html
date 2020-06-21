@@ -1,0 +1,508 @@
+<html lang="tr">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Lunapark</title>
+    <script src="three.js"></script>
+    <script src="three.min.js"></script>
+    <script>
+        koltukAci = 0
+        gyroAci = 0
+        noktaIsikAci = 0
+        red = 0
+        green = 85
+        blue = 170
+        isikRenk = 0
+
+        var mouse = new THREE.Vector2()
+        var checkMouse = false
+        window.addEventListener("load", sayfaYuklendi, false)
+
+        function sayfaYuklendi() {
+            Kanvas = document.getElementById("Kanvas")
+            goruntuleyici = new THREE.WebGLRenderer({
+                canvas: Kanvas
+            })
+            goruntuleyici.setClearColor("#000000")
+            goruntuleyici.setSize(Kanvas.clientWidth, Kanvas.clientHeight)
+            goruntuleyici.shadowMap.Enabled = true
+            document.body.appendChild(goruntuleyici.domElement)
+
+            baslikKanvas = document.getElementById("baslikKanvas")
+            baslikGoruntuleyici = new THREE.WebGLRenderer({
+                alpha: true
+            })
+            baslikGoruntuleyici.setSize(baslikKanvas.clientWidth, Kanvas.clientHeight)
+            baslikKanvas.appendChild(baslikGoruntuleyici.domElement)
+            luna = new THREE.Object3D
+
+            //iskeletDirek Ayarları
+            iskeletDirekGenislik = 3
+            iskeletDirekYukseklik = 55
+            iskeletDirekDerinlik = 3
+
+            //direk Ayarları
+            direkGenislik = 4
+            direkYukseklik = 35
+            direkDerinlik = 3
+
+            //zincir Ayarları
+            zincirGenislik = 0.5
+            zincirYukseklik = 30
+            zincirDerinlik = 0.5
+
+            //gyro Ayarları
+            gyroSekil = new THREE.Shape()
+            gyroSekil.moveTo(-10, -10)
+            gyroSekil.lineTo(-10, 10)
+            gyroSekil.lineTo(10, 10)
+            gyroSekil.lineTo(10, -10)
+            gyroSekil.lineTo(-10, -10)
+            gyroDelik = new THREE.Shape()
+            gyroDelik.arc(0, 0, 5, 0, 2 * Math.PI)
+            gyroSekil.holes.push(gyroDelik)
+
+            gyroYukseltmeAyarlari = {
+                steps: 1,
+                depth: 4,
+                bevelEnabled: true,
+                bevelThickness: 2,
+                bevelSize: 2,
+                bevelSegments: 1
+            }
+            //dolap Ayarları
+            sekil = new THREE.Shape()
+            sekil.arc(0, 0, 23, 0, 2 * Math.PI)
+            delik = new THREE.Shape()
+            delik.arc(0, 0, 20, 0, 2 * Math.PI)
+            sekil.holes.push(delik)
+
+            yukseltmeAyarlari = {
+                steps: 1,
+                depth: 0,
+                bevelEnabled: true,
+                bevelThickness: 2,
+                bevelSize: 2,
+                bevelSegments: 9
+            }
+
+            //koltuk Ayarları
+            koltukGenislik = 3
+            koltukYukseklik = 9
+            koltukDerinlik = 3
+
+            //kamera Ayarları
+            oran = Kanvas.clientWidth / Kanvas.clientHeight
+            boyut = 35
+            sol = -boyut * oran,
+                sag = boyut * oran,
+                ust = boyut,
+                alt = -boyut,
+                yakin = -2 * boyut,
+                uzak = 2 * boyut
+
+            //yüzey Ayarları
+            yuvarlak = new THREE.Shape()
+            yuvarlak.absarc(0, 0, 50, 0, 0, true)
+
+            //biçim Tanımlamaları
+            iskeletDirekBicim = new THREE.BoxGeometry(iskeletDirekGenislik, iskeletDirekYukseklik, iskeletDirekDerinlik)
+            direkBicim = new THREE.BoxGeometry(direkGenislik, direkYukseklik, direkDerinlik)
+            dolapBicim = new THREE.ExtrudeGeometry(sekil, yukseltmeAyarlari)
+            silindirBicim = new THREE.CylinderGeometry(2, 2, 12, 3)
+            gyroBicim = new THREE.ExtrudeGeometry(gyroSekil, gyroYukseltmeAyarlari)
+            koltukBicim = new THREE.BoxGeometry(koltukGenislik, koltukYukseklik, koltukDerinlik)
+            zincirBicim = new THREE.BoxGeometry(zincirGenislik, zincirYukseklik, zincirDerinlik)
+            ayBicim = new THREE.SphereGeometry(16, 16, 16)
+            yüzeyBicim = new THREE.ShapeGeometry(yuvarlak)
+
+            //malzeme Tanımlamaları
+            yuzeyMalzeme = new THREE.MeshPhongMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+            })
+            pMalzeme1 = new THREE.MeshPhongMaterial({
+                color: 'red',
+                reflectivity: 0.1,
+                specular: 0xffffff,
+                shininess: 5,
+            })
+            pMalzeme2 = new THREE.MeshPhongMaterial({
+                color: 'blue',
+                reflectivity: 0.1,
+                specular: 0xffffff,
+                shininess: 5
+            })
+            pMalzeme3 = new THREE.MeshPhongMaterial({
+                color: 0x000000,
+                transparent: true
+            })
+            SMalzeme1 = new THREE.MeshStandardMaterial({
+                color: 'green',
+
+            })
+            ayMalzeme = new THREE.MeshLambertMaterial({
+                color: 'white'
+            })
+
+            //ışık Tanımlamaları
+            yonluIsik = new THREE.DirectionalLight("white")
+            noktaIsik = new THREE.PointLight("white")
+
+            //kamera Tanımlamaları
+            ortografikKamera = new THREE.OrthographicCamera(sol, sag, ust, alt, yakin, uzak)
+            kamera = new THREE.OrthographicCamera(baslikKanvas.clientWidth / baslikKanvas.clientHeight * -30, baslikKanvas.clientWidth / baslikKanvas.clientHeight * 30, 30, -30, -45, 45)
+
+            //sahne Tanımlamaları
+            sahne = new THREE.Scene()
+            baslikSahne = new THREE.Scene()
+
+            //lunaBaslik
+            luna = new THREE.Mesh(ayBicim, ayMalzeme)
+            baslikSahne.add(luna)
+            yonluIsik.position.set(0, 0, 4)
+            baslikSahne.add(yonluIsik)
+            baslikGoruntuleyici.render(baslikSahne, kamera)
+
+            direk1 = new THREE.Mesh(direkBicim, pMalzeme1)
+            direk2 = new THREE.Mesh(direkBicim, pMalzeme1)
+            direk3 = new THREE.Mesh(direkBicim, pMalzeme1)
+            direk4 = new THREE.Mesh(direkBicim, pMalzeme1)
+
+            iDirek1 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            iDirek2 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            iDirek3 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            iDirek4 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+
+            silindir = new THREE.Mesh(silindirBicim, pMalzeme3)
+
+            dolap = new THREE.Mesh(dolapBicim, SMalzeme1)
+            dolap2 = new THREE.Mesh(dolapBicim, SMalzeme1)
+
+            gyroDirek = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            gyro = new THREE.Mesh(gyroBicim, SMalzeme1)
+
+            salincakDirek1 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            salincakDirek2 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+
+            ardinalDirek = new THREE.Mesh(direkBicim, pMalzeme1)
+            ardinalDirek2 = new THREE.Mesh(iskeletDirekBicim, pMalzeme2)
+            ardinalDirek3 = new THREE.Mesh(direkBicim, pMalzeme1)
+
+            salincakDirek = new THREE.Mesh(iskeletDirekBicim, pMalzeme1)
+
+            salincak1 = new THREE.Mesh(dolapBicim, SMalzeme1)
+
+            koltuk = new THREE.Mesh(koltukBicim, SMalzeme1)
+            koltuk2 = new THREE.Mesh(koltukBicim, SMalzeme1)
+
+            zincir1 = new THREE.Mesh(zincirBicim, pMalzeme3)
+            zincir2 = new THREE.Mesh(zincirBicim, pMalzeme3)
+            zincir3 = new THREE.Mesh(zincirBicim, pMalzeme3)
+            zincir4 = new THREE.Mesh(zincirBicim, pMalzeme3)
+
+            salincakKoltuk1 = new THREE.Mesh(koltukBicim, pMalzeme2)
+            salincakKoltuk2 = new THREE.Mesh(koltukBicim, pMalzeme2)
+            salincakKoltuk3 = new THREE.Mesh(koltukBicim, pMalzeme2)
+            salincakKoltuk4 = new THREE.Mesh(koltukBicim, pMalzeme2)
+
+            yüzey = new THREE.Mesh(yüzeyBicim, yuzeyMalzeme)
+            yüzey.receiveShadow = true
+
+            //Dönmeyen Dolap
+            dönmeyenDolapSistem = new THREE.Object3D();
+            dönmeyenDolapSistem.add(direk1)
+            dönmeyenDolapSistem.add(direk2)
+            dönmeyenDolapSistem.add(direk3)
+            dönmeyenDolapSistem.add(direk4)
+            dönmeyenDolapSistem.add(silindir)
+            dönmeyenDolapSistem.add(dolap)
+            dönmeyenDolapSistem.add(dolap2)
+            dönmeyenDolapSistem.add(iDirek1)
+            dönmeyenDolapSistem.add(iDirek2)
+            dönmeyenDolapSistem.add(iDirek3)
+            dönmeyenDolapSistem.add(iDirek4)
+            dönmeyenDolapSistem.castShadow = true
+
+            //Serbest Düşüş
+            serbestDususSistem = new THREE.Object3D();
+            serbestDususSistem.add(gyroDirek)
+            serbestDususSistem.add(gyro)
+            serbestDususSistem.castShadow = true
+
+            //Ardinal
+            ardinalSistem = new THREE.Object3D();
+            ardinalSistem.add(ardinalDirek)
+            ardinalSistem.add(ardinalDirek2)
+            ardinalSistem.add(ardinalDirek3)
+            ardinalSistem.add(koltuk)
+            ardinalSistem.add(koltuk2)
+            ardinalSistem.castShadow = true
+
+            //Salıncak
+            salincakSistem = new THREE.Object3D();
+            salincakSistem.add(salincak1)
+            salincakSistem.add(salincakDirek1)
+            salincakSistem.add(salincakDirek2)
+            salincakSistem.add(zincir1)
+            salincakSistem.add(zincir2)
+            salincakSistem.add(zincir3)
+            salincakSistem.add(zincir4)
+            salincakSistem.add(salincakKoltuk1)
+            salincakSistem.add(salincakKoltuk2)
+            salincakSistem.add(salincakKoltuk3)
+            salincakSistem.add(salincakKoltuk4)
+
+            noktaIsik.position.set(0, 30, 30)
+
+            ortografikKamera.position.set(-20, 5, 10);
+            ortografikKamera.lookAt(0, 0, 0)
+
+            yüzey.position.set(0, -25, 0)
+
+            yüzey.rotation.x = -Math.PI / 2
+
+            Kanvas.addEventListener('mouseenter', onKanvasMouseEnter)
+            Kanvas.addEventListener('mouseleave', onKanvasMouseLeave)
+            Kanvas.addEventListener('mousemove', onKanvasMouseMove)
+            hareketlendir();
+        }
+
+        function dönmeyenDolap() {
+            oyuncak = 1
+            temizle()
+            sahne.add(dönmeyenDolapSistem)
+            sahne.add(yüzey)
+            sahne.add(noktaIsik)
+
+            //Rotation
+            direk1.rotation.z = Math.PI / 6
+            direk2.rotation.z = -Math.PI / 6
+            direk3.rotation.z = Math.PI / 6
+            direk4.rotation.z = -Math.PI / 6
+
+            iDirek1.rotation.z = Math.PI / 1
+            iDirek2.rotation.z = Math.PI / 2
+            iDirek3.rotation.z = Math.PI / 4
+            iDirek4.rotation.z = -Math.PI / 4
+
+            silindir.rotation.x = Math.PI / 2
+            //Position
+            iDirek1.position.set(0, 5, -2)
+            iDirek2.position.set(0, 5, -2)
+            iDirek3.position.set(0, 5, -2)
+            iDirek4.position.set(0, 5, -2)
+
+            direk1.position.set(8, -10, 4)
+            direk2.position.set(-8, -10, 4)
+            direk3.position.set(8, -10, -7)
+            direk4.position.set(-8, -10, -7)
+
+            silindir.position.set(0, 5, -2)
+
+            dolap.position.set(0, 5, 0)
+            dolap2.position.set(0, 5, -4)
+
+        }
+
+        function serbestDüsüs() {
+            oyuncak = 2
+            temizle()
+            gyroAci = 0
+            gyro.position.set(0, 0, 0)
+            sahne.add(serbestDususSistem)
+            sahne.add(yüzey)
+            sahne.add(noktaIsik)
+            //Rotation
+            gyro.rotation.x = Math.PI / 2
+            //Position
+        }
+
+        function ardinal() {
+            oyuncak = 3
+            temizle()
+            koltukAci = 0
+            sahne.add(ardinalSistem)
+            yüzey.position.y = -30
+            sahne.add(yüzey)
+            sahne.add(noktaIsik)
+            //Rotation
+            ardinalDirek2.rotation.z = Math.PI / 2
+            //Position
+            koltuk.position.x = 27 * Math.cos(koltukAci)
+            koltuk.position.y = 0 * Math.cos(koltukAci)
+            koltuk2.position.x = -27 * Math.cos(koltukAci)
+            koltuk2.position.y = 0 * Math.cos(koltukAci)
+            ardinalDirek.position.set(0, -13, 3.5)
+            ardinalDirek3.position.set(0, -13, -3.5)
+        }
+
+        function salincak() {
+            oyuncak = 4
+            temizle()
+            sahne.add(salincakSistem)
+            sahne.add(salincakDirek)
+            sahne.add(yüzey)
+            sahne.add(noktaIsik)
+            //Rotation
+            salincakKoltuk1.rotation.x = Math.PI / 2
+            salincakKoltuk2.rotation.x = Math.PI / 2
+            salincakKoltuk3.rotation.x = Math.PI / 2
+            salincakKoltuk4.rotation.x = Math.PI / 2
+
+            zincir1.rotation.z = Math.PI / 16
+            zincir2.rotation.z = -Math.PI / 16
+            zincir3.rotation.x = -Math.PI / 16
+            zincir4.rotation.x = Math.PI / 16
+
+            salincakDirek1.rotation.x = Math.PI / 2
+            salincakDirek2.rotation.x = Math.PI / 2
+            salincakDirek2.rotation.z = Math.PI / 2
+
+            salincak1.rotation.x = Math.PI / 2
+
+            //Position
+
+            salincak1.position.y = 15
+            salincakDirek1.position.y = 15
+            salincakDirek2.position.y = 15
+
+            zincir1.position.set(30, 0, 0)
+            zincir2.position.set(-30, 0, 0)
+            zincir3.position.set(0, 0, 30)
+            zincir4.position.set(0, 0, -30)
+
+            salincakKoltuk1.position.set(32, -15, 0)
+            salincakKoltuk2.position.set(-32, -15, 0)
+            salincakKoltuk3.position.set(0, -15, 32)
+            salincakKoltuk4.position.set(0, -15, -32)
+
+            salincakDirek.position.y = -15
+        }
+
+        function hizlandir() {
+            Kanvas.addEventListener('mouseenter', onKanvasMouseEnter)
+            Kanvas.addEventListener('mouseleave', onKanvasMouseLeave)
+            Kanvas.addEventListener('mousemove', onKanvasMouseMove)
+            hareketlendir();
+        }
+
+        function temizle() {
+            while (sahne.children.length > 0) {
+                sahne.remove(sahne.children[0])
+            }
+        }
+
+        function hareketlendir() {
+            KameraKaydir()
+            requestAnimationFrame(hareketlendir)
+            goruntuleyici.render(sahne, ortografikKamera)
+
+        }
+
+        function KameraKaydir() {
+            if (checkMouse) {
+                if (oyuncak == 1) {
+                    dolap.rotation.z += Math.PI / 250
+                    iDirek1.rotation.z += Math.PI / 250
+                    iDirek2.rotation.z += Math.PI / 250
+                    iDirek3.rotation.z += Math.PI / 250
+                    iDirek4.rotation.z += Math.PI / 250
+                    dönmeyenDolapSistem.rotation.y += Math.PI / 500
+                }
+                if (oyuncak == 2) {
+                    gyro.position.y += Math.cos(gyroAci)
+                    serbestDususSistem.rotation.y += Math.PI / 500
+                    gyroAci += Math.PI / 60
+
+                }
+                if (oyuncak == 3) {
+                    ardinalDirek2.rotation.z += Math.PI / 80
+                    koltuk.rotation.z += -Math.PI / 80
+                    koltuk2.rotation.z += -Math.PI / 80
+                    koltukAci += Math.PI / 80
+                    koltuk.position.x = 27 * Math.cos(koltukAci)
+                    koltuk.position.y = 27 * Math.sin(koltukAci)
+
+                    koltuk2.position.x = -27 * Math.cos(koltukAci)
+                    koltuk2.position.y = -27 * Math.sin(koltukAci)
+                    ardinalSistem.rotation.y += Math.PI / 500
+                }
+                if (oyuncak == 4) {
+
+                    salincakSistem.rotation.y += Math.PI / 200
+                }
+                red += 1
+                green += 1
+                blue += 1
+
+                if (red == 255) {
+                    red = 0
+                }
+                if (green == 255) {
+                    green = 0
+                }
+                if (blue == 255) {
+                    blue = 0
+                }
+
+                noktaIsik.color = new THREE.Color("rgb(" + red + ", " + green + ", " + blue + ")");
+                noktaIsikAci += Math.PI / 60
+            }
+        }
+
+        function onKanvasMouseEnter(event) {
+            checkMouse = true
+        }
+
+        function onKanvasMouseLeave(event) {
+            checkMouse = false
+        }
+
+        function onKanvasMouseMove(event) {
+            event.preventDefault()
+            mouse.x = (event.clientX / this.clientWidth) * 50
+            mouse.y = -(event.clientY / this.clientHeight) * 25
+        }
+    </script>
+    <style>
+        #baslikKanvas {
+            top: 0;
+            width: 500px;
+            height: 500px;
+        }
+
+        .sekme {
+            color: green;
+            font: 20pt Tahoma, Verdana;
+        }
+
+        body {
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <table>
+        <tr>
+            <td>
+                <div id="baslikKanvas">
+                </div>
+            </td>
+            <td>
+                <p style="font-size:500%;color:white;">PARK</p>
+            </td>
+        </tr>
+    </table>
+    <h4 id="baslik" style="color:blue; font-size:150%" align="center" ;">Oyuncakları Önizlemek İçin Butonlara Tıklayınız..</h4>
+    <div id="sekmeler" border="1px solid white">
+        <button class="sekme" onclick="dönmeyenDolap()">Dönmeyen Dolap</button>
+        <button class="sekme" onclick="serbestDüsüs()">Serbest Düşüş</button>
+        <button class="sekme" onclick="ardinal()">Ardinal</button>
+        <button class="sekme" onclick="salincak()">Salıncak</button>
+        <button class="sekme" onclick="hizlandir()">Hızlandır</button>
+    </div>
+    <br>
+    <canvas id="Kanvas" style="position:absolute; width:1300; height:500; border:1px solid #000000;"></canvas>
+</body></html>
